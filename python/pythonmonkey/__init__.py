@@ -5,7 +5,7 @@ from .require import *
 
 # Expose the package version
 import importlib.metadata
-__version__ = importlib.metadata.version(__name__)
+__version__ = importlib.metadata.version("pythonmonkey-fork")
 del importlib
 
 # Load the module by default to expose global APIs

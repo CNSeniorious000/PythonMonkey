@@ -1,0 +1,22 @@
+[project]
+name = "pythonmonkey_node_modules"
+version = "0.0.0"
+description = "node_modules for PythonMonkey"
+authors = [
+  { name = "Tom Tang", email = "xmader@distributive.network" },
+  { name = "Caleb Aikens", email = "caleb@distributive.network" },
+  { name = "Wes Garland", email = "wes@distributive.network" },
+  { name = "Hamada Gasmallah", email = "hamada@distributive.network" },
+  { name = "Muspi Merol", email = "me@promplate.dev" },
+]
+requires-python = ">=3"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.build]
+includes = ["pythonmonkey_node_modules/node_modules"]
+
+[tool.pdm.scripts]
+pre_build = { shell = "cd pythonmonkey_node_modules && bun i --no-save --frozen-lockfile --backend copyfile" }

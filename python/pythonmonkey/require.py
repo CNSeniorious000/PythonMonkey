@@ -53,9 +53,7 @@ from . import pythonmonkey as pm
 
 node_modules = os.path.abspath(
   os.path.join(
-    importlib.util.find_spec("pminit").submodule_search_locations[0],  # type: ignore
-    "..",
-    "pythonmonkey",
+    importlib.util.find_spec("pythonmonkey_node_modules").submodule_search_locations[0],  # type: ignore
     "node_modules"
   )
 )

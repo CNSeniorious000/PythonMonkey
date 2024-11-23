@@ -11,6 +11,7 @@ from hashlib import sha256
 from pathlib import Path
 from shlex import split
 from subprocess import Popen
+from sys import argv
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
@@ -155,4 +156,4 @@ async def patch_version(version: str):
 
 if __name__ == "__main__":
     Path("dist").mkdir(exist_ok=True)
-    run(patch_version("1.0.0"))
+    run(patch_version(argv[-1]))

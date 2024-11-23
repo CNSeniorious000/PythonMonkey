@@ -110,8 +110,11 @@ def patch_sdist(tar: Path):
 
         file = root / "pyproject.toml"
         file.write_text(patch_pyproject(file.read_text()))
+        file = root / "PKG-INFO"
+        file.write_text(patch_metadata(file.read_text()))
         for name in ("require.py", "__init__.py"):
-            (root / name).write_text(Path(f"python/pythonmonkey/{name}").read_text())
+            name = f"python/pythonmonkey/{name}"
+            (root / name).write_bytes(Path(name).read_bytes())
 
         new_path = root.replace(Path(tmpdir, root.name.replace("pythonmonkey-", "pythonmonkey_fork-")))
 

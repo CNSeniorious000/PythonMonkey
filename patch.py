@@ -21,7 +21,7 @@ from httpx import AsyncClient
 def patch_metadata(content: str):
     return content.replace("Name: pythonmonkey", "Name: pythonmonkey-fork", 1).replace(
         "Requires-Dist: pminit (>=0.4.0)",
-        "Requires-Dist: pythonmonkey-node-modules (~=0.0.0)",
+        "Requires-Dist: pythonmonkey-node-modules (~=0.1)",
     )
 
 
@@ -95,10 +95,11 @@ def patch_wheel(whl: Path):
 
 
 def patch_pyproject(content: str):
-    return content.replace('name = "pythonmonkey"', 'name = "pythonmonkey-fork"').replace(
-        'pminit = { version = ">=0.4.0", allow-prereleases = true }',
-        'pythonmonkey_node_modules = "^0.0.0"',
-    )
+    lines = content.replace('name = "pythonmonkey"', 'name = "pythonmonkey-fork"').splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith("pminit = "):
+            lines[i] = 'pythonmonkey_node_modules = "~0.1"'
+    return "\n".join(lines) + "\n"
 
 
 def patch_sdist(tar: Path):

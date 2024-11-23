@@ -1,6 +1,6 @@
 [project]
 name = "pythonmonkey_node_modules"
-version = "0.0.0"
+dynamic = ["version"]
 description = "node_modules for PythonMonkey"
 authors = [
   { name = "Tom Tang", email = "xmader@distributive.network" },
@@ -20,3 +20,7 @@ includes = ["pythonmonkey_node_modules/node_modules"]
 
 [tool.pdm.scripts]
 pre_build = { shell = "cd pythonmonkey_node_modules && bun i --no-save --frozen-lockfile --backend copyfile" }
+
+[tool.pdm.version]
+source = "file"
+path = "pythonmonkey_node_modules/__init__.py"

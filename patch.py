@@ -9,6 +9,7 @@ from asyncio.threads import to_thread
 from base64 import b64encode
 from hashlib import sha256
 from pathlib import Path
+from re import findall, sub
 from shlex import split
 from subprocess import Popen
 from sys import argv
@@ -18,10 +19,16 @@ from zipfile import ZipFile
 from httpx import AsyncClient
 
 
+def remove_local_version(string: str):  # local versions is not allowed
+    return sub(r"(\d+\.\d+\.\d+\.dev\d+)\+\w+", r"\1", string)  # x.y.z.dev[n]+[hash]
+
+
 def patch_metadata(content: str):
-    return content.replace("Name: pythonmonkey", "Name: pythonmonkey-fork", 1).replace(
-        "Requires-Dist: pminit (>=0.4.0)",
-        "Requires-Dist: pythonmonkey-node-modules (~=0.1)",
+    return remove_local_version(
+        content.replace("Name: pythonmonkey", "Name: pythonmonkey-fork", 1).replace(
+            "Requires-Dist: pminit (>=0.4.0)",
+            "Requires-Dist: pythonmonkey-node-modules (~=0.1)",
+        )
     )
 
 
@@ -34,7 +41,7 @@ def patch_record(content: str):
             lines.append(f"{path},sha256={b64encode(sha256(file_content).digest()).decode('latin1')},{len(file_content)}")
         else:
             lines.append(line)
-    return "\n".join(lines).replace("pythonmonkey-", "pythonmonkey_fork-")
+    return remove_local_version("\n".join(lines).replace("pythonmonkey-", "pythonmonkey_fork-"))
 
 
 def run_command(command: str, cwd: str):
@@ -63,7 +70,7 @@ def rename_dist_info_folder(whl_path: Path, files: list[str]):
         )
 
         dist_info_folder = next(Path(tmpdir).glob("pythonmonkey-*.dist-info"))
-        new_dist_info_folder = dist_info_folder.with_name(dist_info_folder.name.replace("pythonmonkey-", "pythonmonkey_fork-"))
+        new_dist_info_folder = dist_info_folder.with_name(remove_local_version(dist_info_folder.name.replace("pythonmonkey-", "pythonmonkey_fork-")))
         dist_info_folder.rename(new_dist_info_folder)
         run_command(
             f"zip -q -r -p {str(whl_path.resolve())!r} {new_dist_info_folder.name}",
@@ -80,6 +87,7 @@ def patch_wheel(whl: Path):
             elif path.endswith("RECORD"):
                 record_path = path
                 record = patch_record(zf.read(path).decode("utf-8"))
+            # TODO: METADATA's sha256 is not updated
 
         dist_info_files = [path for path in zf.namelist() if "dist-info/" in path]
 
@@ -116,7 +124,7 @@ def patch_sdist(tar: Path):
             name = f"python/pythonmonkey/{name}"
             (root / name).write_bytes(Path(name).read_bytes())
 
-        new_path = root.replace(Path(tmpdir, root.name.replace("pythonmonkey-", "pythonmonkey_fork-")))
+        new_path = root.replace(Path(tmpdir, remove_local_version(root.name.replace("pythonmonkey-", "pythonmonkey_fork-"))))
 
         run_command(f"tar -czf {str(tar.resolve())!r} {new_path.name}", tmpdir)
 
@@ -124,16 +132,29 @@ def patch_sdist(tar: Path):
 client = AsyncClient(headers={"accept": "application/vnd.pypi.simple.v1+json"})
 
 
-async def patch_version(version: str):
+async def fetch_pypi(version: str, names: list[str], links: list[str]):
     res = await client.get("https://pypi.org/simple/pythonmonkey/")
-
-    names: list[str] = []
-    links: list[str] = []
-
     for file_info in res.raise_for_status().json()["files"]:
         if file_info["filename"].startswith(f"pythonmonkey-{version}"):
             names.append(file_info["filename"])
             links.append(file_info["url"])
+
+
+async def fetch_nightly(names: list[str], links: list[str]):
+    res = await client.get("https://nightly.pythonmonkey.io/pythonmonkey/")
+    html = res.raise_for_status().text
+    for href in findall(r'href="([^"]+)"', html):
+        names.append(filename := href.removeprefix("./"))
+        links.append(f"https://nightly.pythonmonkey.io/pythonmonkey/{filename}")
+
+
+async def patch_version(version: str):
+    names: list[str] = []
+    links: list[str] = []
+    if version == "nightly":
+        await fetch_nightly(names, links)
+    else:
+        await fetch_pypi(version, names, links)
 
     responses = await gather(*map(client.get, links))
 
@@ -152,7 +173,7 @@ async def patch_version(version: str):
             elif filename.endswith(".tar.gz"):
                 patch_sdist(path)
 
-            Path("dist", filename).rename(Path("dist", filename.replace("pythonmonkey", "pythonmonkey_fork")))
+            Path("dist", filename).rename(Path("dist", remove_local_version(filename.replace("pythonmonkey", "pythonmonkey_fork"))))
             print(f"Patched {filename}")
 
     await gather(*futures)

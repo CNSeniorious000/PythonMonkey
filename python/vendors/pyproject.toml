@@ -16,7 +16,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm.build]
-includes = ["pythonmonkey_node_modules/node_modules"]
+includes = ["pythonmonkey_node_modules/node_modules", "**/*.py"]
 
 [tool.pdm.scripts]
 pre_build = { shell = "cd pythonmonkey_node_modules && bun i --no-save --frozen-lockfile --backend copyfile" }
